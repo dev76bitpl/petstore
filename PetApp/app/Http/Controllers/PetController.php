@@ -16,6 +16,11 @@ class PetController extends Controller
         $this->petService = $petService;
     }
 
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
     public function index(Request $request)
     {
         $limit = $request->input('limit', 10);
@@ -61,11 +66,22 @@ class PetController extends Controller
         ]);
     }
 
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
     public function create()
     {
         return view('pets.create');
     }
 
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -93,14 +109,26 @@ class PetController extends Controller
 
             Log::info("[SESSION UPDATE] Added pets stored in session: " . json_encode($addedPets));
 
-            return redirect()->route('pets.index')->with('success', 'Pet added successfully!');
+            // **Dodanie komunikatu o sukcesie**
+            session()->flash('success', 'Pet added successfully!');
+
+            return redirect()->route('pets.index');
         } catch (\Exception $e) {
             Log::error("[ERROR] Failed to add pet: " . $e->getMessage());
-            return back()->withErrors('Error adding pet.');
+
+            // **Dodanie komunikatu o błędzie**
+            session()->flash('error', 'Error adding pet.');
+
+            return back();
         }
     }
 
-
+    /**
+     * Edit the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
     public function edit($id)
     {
         try {
@@ -118,7 +146,12 @@ class PetController extends Controller
         }
     }
 
-
+    /**
+     * Update the specified resource.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
     public function update(Request $request, $id)
     {
         Log::info("[REQUEST] Update request for pet ID: {$id} with data: ", $request->all());
@@ -135,14 +168,27 @@ class PetController extends Controller
         try {
             $this->petService->updatePet($id, $validated);
             Log::info("[SUCCESS] Pet ID: {$id} updated successfully.");
-            return redirect()->route('pets.index')->with('success', 'Pet updated successfully!');
+
+            // **Dodanie komunikatu o sukcesie**
+            session()->flash('success', 'Pet updated successfully!');
+
+            return redirect()->route('pets.index');
         } catch (\Exception $e) {
             Log::error("[ERROR] Failed to update pet ID {$id}: " . $e->getMessage());
-            return back()->withErrors('Error updating pet.');
+
+            // **Dodanie komunikatu o błędzie**
+            session()->flash('error', 'Error updating pet.');
+
+            return back();
         }
     }
 
-
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
     public function destroy($id)
     {
         try {
@@ -168,10 +214,17 @@ class PetController extends Controller
                 Log::info("[SESSION UPDATE] Removed pet ID {$id} from session. New list: " . json_encode($addedPets));
             }
 
-            return redirect()->route('pets.index')->with('success', 'Pet deleted successfully!');
+            // **Dodanie komunikatu o sukcesie**
+            session()->flash('success', 'Pet deleted successfully!');
+
+            return redirect()->route('pets.index');
         } catch (\Exception $e) {
             Log::error("[ERROR] Failed to delete pet ID {$id}: " . $e->getMessage());
-            return back()->withErrors('Error deleting pet.');
+
+            // **Dodanie komunikatu o błędzie**
+            session()->flash('error', 'Error deleting pet.');
+
+            return back();
         }
     }
 }

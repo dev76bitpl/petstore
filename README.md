@@ -18,7 +18,7 @@ This is a Laravel-based application that interacts with the [Swagger PetStore AP
 ### 1️⃣ **Clone the Repository**
 
 ```bash
-git clone https://github.com/your-repo/petstore-laravel.git
+git clone [https://github.com/dev76bitpl/petstore.git](https://github.com/dev76bitpl/petstore.git)
 cd petstore-laravel
 ```
 

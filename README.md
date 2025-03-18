@@ -64,7 +64,7 @@ Your application should now be running at `http://127.0.0.1:8000/`.
 
 ---
 
-### 5️⃣ **Optional: Clear Laravel cache and start server**
+### 6️⃣ **Optional: Clear Laravel cache and start server**
 
 ```bash
 php artisan cache:clear

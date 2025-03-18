@@ -30,7 +30,7 @@
         <br><br>
 
         <label for="photoUrls">Photo URL:</label>
-        <input type="text" name="photoUrls[]" value="{{ old('photoUrls.0', 'https://example.com/default.jpg') }}" required>
+        <input type="text" name="photoUrls[]" value="{{ old('photoUrls.0', 'https://picsum.photos/200/300') }}" required>
         <button type="button" onclick="addPhotoUrl()">+ Add another photo</button>
         <div id="photoUrlsContainer"></div>
         <br><br>

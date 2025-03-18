@@ -20,6 +20,40 @@ class PetService
     }
 
     /**
+     * Make a request to the API.
+     *
+     * @param string $method
+     * @param string $uri
+     * @param array $options
+     * @return array|null
+     */
+    private function requestApi($method, $uri, $options = [])
+    {
+        try {
+            Log::info("[API REQUEST] {$method} {$uri}", $options);
+
+            $response = $this->client->request($method, $uri, $options);
+            $responseBody = $response->getBody()->getContents();
+
+            Log::info("[API RESPONSE] {$method} {$uri} - Status: " . $response->getStatusCode(), [
+                'body' => json_decode($responseBody, true) ?? $responseBody
+            ]);
+
+            return json_decode($responseBody, true);
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            if ($e->getResponse()->getStatusCode() == 404) {
+                Log::warning("[API ERROR] Resource not found: {$uri}");
+                return null;
+            }
+            Log::error("[API ERROR] Request failed: " . $e->getMessage());
+            return null;
+        } catch (\Exception $e) {
+            Log::error("[API ERROR] Unexpected error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Get the pets from the API.
      *
      * @param int $limit
@@ -28,38 +62,10 @@ class PetService
      */
     public function getAllPets($limit = 10, $page = 1)
     {
-        try {
-            $response = $this->client->get('pet/findByStatus', [
-                'query' => ['status' => 'available']
-            ]);
+        $response = $this->requestApi('GET', 'pet/findByStatus', ['query' => ['status' => 'available']]);
 
-            $pets = json_decode($response->getBody()->getContents(), true);
-
-            Log::info("[API RESPONSE] Total pets fetched: " . count($pets));
-
-            if (empty($pets)) {
-                return [
-                    'data' => [],
-                    'total' => 0,
-                    'perPage' => $limit,
-                    'currentPage' => $page,
-                    'lastPage' => 1
-                ];
-            }
-
-            $totalPets = count($pets);
-            $offset = ($page - 1) * $limit;
-            $paginatedPets = array_slice($pets, $offset, $limit);
-
-            return [
-                'data' => $paginatedPets,
-                'total' => $totalPets,
-                'perPage' => $limit,
-                'currentPage' => $page,
-                'lastPage' => max(1, ceil($totalPets / $limit))
-            ];
-        } catch (\Exception $e) {
-            Log::error("[API ERROR] Error fetching all pets: " . $e->getMessage());
+        if (!is_array($response)) {
+            Log::warning("[API WARNING] Unexpected response format from API.");
             return [
                 'data' => [],
                 'total' => 0,
@@ -68,6 +74,60 @@ class PetService
                 'lastPage' => 1
             ];
         }
+
+        Log::info("[API RESPONSE] Total pets fetched: " . count($response));
+
+        $totalPets = count($response);
+        $offset = ($page - 1) * $limit;
+        $paginatedPets = array_slice($response, $offset, $limit);
+
+        return [
+            'data' => $paginatedPets,
+            'total' => $totalPets,
+            'perPage' => $limit,
+            'currentPage' => $page,
+            'lastPage' => max(1, ceil($totalPets / $limit))
+        ];
+        // try {
+        //     $response = $this->client->get('pet/findByStatus', [
+        //         'query' => ['status' => 'available']
+        //     ]);
+
+        //     $pets = json_decode($response->getBody()->getContents(), true);
+
+        //     Log::info("[API RESPONSE] Total pets fetched: " . count($pets));
+
+        //     if (empty($pets)) {
+        //         return [
+        //             'data' => [],
+        //             'total' => 0,
+        //             'perPage' => $limit,
+        //             'currentPage' => $page,
+        //             'lastPage' => 1
+        //         ];
+        //     }
+
+        //     $totalPets = count($pets);
+        //     $offset = ($page - 1) * $limit;
+        //     $paginatedPets = array_slice($pets, $offset, $limit);
+
+        //     return [
+        //         'data' => $paginatedPets,
+        //         'total' => $totalPets,
+        //         'perPage' => $limit,
+        //         'currentPage' => $page,
+        //         'lastPage' => max(1, ceil($totalPets / $limit))
+        //     ];
+        // } catch (\Exception $e) {
+        //     Log::error("[API ERROR] Error fetching all pets: " . $e->getMessage());
+        //     return [
+        //         'data' => [],
+        //         'total' => 0,
+        //         'perPage' => $limit,
+        //         'currentPage' => $page,
+        //         'lastPage' => 1
+        //     ];
+        // }
     }
 
     /**
@@ -123,7 +183,7 @@ class PetService
     }
 
     /**
-     * Get the pets by their IDs.
+     * Get pets by their IDs.
      *
      * @param array $ids
      * @param int $limit
@@ -133,77 +193,36 @@ class PetService
     public function getPetsByIds(array $ids, $limit = 10, $page = 1)
     {
         $pets = [];
-
         if (empty($ids)) {
             Log::warning("[WARNING] No pet IDs provided to fetch.");
-            return [
-                'data' => [],
-                'total' => 0,
-                'perPage' => $limit,
-                'currentPage' => $page,
-                'lastPage' => 1
-            ];
+            return ['data' => [], 'total' => 0, 'perPage' => $limit, 'currentPage' => $page, 'lastPage' => 1];
         }
-
         foreach ($ids as $id) {
             if (!is_numeric($id)) {
                 Log::warning("[WARNING] Skipping invalid pet ID: {$id}");
                 continue;
             }
-
-            try {
-                Log::info("[API REQUEST] Fetching pet ID: {$id}");
-                $response = $this->client->get("pet/{$id}");
-                $pet = json_decode($response->getBody()->getContents(), true);
-
-                if (!empty($pet)) {
-                    $pets[] = $pet;
-                }
-            } catch (\Exception $e) {
-                Log::error("[API ERROR] Error fetching pet ID {$id}: " . $e->getMessage());
+            $pet = $this->requestApi('GET', "pet/{$id}");
+            if (!empty($pet)) {
+                $pets[] = $pet;
             }
         }
-
         $totalPets = count($pets);
         $offset = ($page - 1) * $limit;
         $paginatedPets = array_slice($pets, $offset, $limit);
-
-        return [
-            'data' => $paginatedPets,
-            'total' => $totalPets,
-            'perPage' => $limit,
-            'currentPage' => $page,
-            'lastPage' => max(1, ceil($totalPets / $limit))
-        ];
+        return ['data' => $paginatedPets, 'total' => $totalPets, 'perPage' => $limit, 'currentPage' => $page, 'lastPage' => max(1, ceil($totalPets / $limit))];
     }
 
     /**
-     * Get the pet by its ID.
+     * Get a pet by its ID.
      *
      * @param int $id
      * @return array|null
      */
     public function getPetById($id)
     {
-        try {
-            Log::info("[API REQUEST] Fetching pet ID: {$id}");
-            $response = $this->client->get("pet/{$id}");
-
-            $pet = json_decode($response->getBody()->getContents(), true);
-
-            if (empty($pet) || !isset($pet['id'])) {
-                Log::warning("[WARNING] Pet ID {$id} not found in API.");
-                return null;
-            }
-
-            Log::info("[API RESPONSE] Pet found: " . json_encode($pet));
-            return $pet;
-        } catch (\Exception $e) {
-            Log::error("[API ERROR] Error fetching pet ID {$id}: " . $e->getMessage());
-            return null;
-        }
+        return $this->requestApi('GET', "pet/{$id}");
     }
-
 
     /**
      * Add a new pet to the API.
@@ -213,29 +232,21 @@ class PetService
      */
     public function addPet($data)
     {
-        try {
-            Log::info('Adding pet with data:', $data); // Logujemy wysyłane dane
+        $payload = [
+            'id' => rand(666, 666666),
+            'category' => [
+                'id' => $data['category_id'] ?? rand(1, 10),
+                'name' => $data['category_name'] ?? 'General'
+            ],
+            'name' => $data['name'],
+            'photoUrls' => $data['photoUrls'] ?? ["https://example.com/default.jpg"],
+            'tags' => $data['tags'] ?? [['id' => rand(1, 10), 'name' => 'friendly']],
+            'status' => $data['status'],
+        ];
 
-            $response = $this->client->post('pet', [
-                'json' => [
-                    'id' => rand(1000, 9999),
-                    'category' => ['id' => rand(1, 10), 'name' => 'General'],
-                    'name' => $data['name'],
-                    'photoUrls' => ["https://example.com/default.jpg"],
-                    'tags' => [['id' => rand(1, 10), 'name' => 'friendly']],
-                    'status' => $data['status'],
-                ],
-            ]);
+        Log::info('Adding pet with data:', $payload);
 
-            $pet = json_decode($response->getBody()->getContents(), true);
-
-            Log::info('Pet added successfully:', $pet); // Logujemy odpowiedź z API
-
-            return $pet;
-        } catch (\Exception $e) {
-            Log::error('Error adding pet: ' . $e->getMessage());
-            throw $e;
-        }
+        return $this->requestApi('POST', 'pet', ['json' => $payload]);
     }
 
     /**
@@ -247,28 +258,7 @@ class PetService
      */
     public function updatePet($id, $data)
     {
-        try {
-            Log::info("[API REQUEST] Updating pet ID: {$id} with data: " . json_encode($data));
-
-            $payload = [
-                'id' => $id,
-                'category' => [
-                    'id' => $data['category_id'] ?? rand(1, 10),
-                    'name' => $data['category_name'] ?? 'General'
-                ],
-                'name' => $data['name'],
-                'photoUrls' => $data['photoUrls'] ?? ["https://example.com/default.jpg"],
-                'tags' => $data['tags'] ?? [['id' => rand(1, 10), 'name' => 'friendly']],
-                'status' => $data['status'],
-            ];
-
-            $this->client->put('pet', ['json' => $payload]);
-
-            Log::info("[API RESPONSE] Pet ID: {$id} updated successfully.");
-        } catch (\Exception $e) {
-            Log::error("[API ERROR] Error updating pet ID {$id}: " . $e->getMessage());
-            throw $e;
-        }
+        $this->requestApi('PUT', 'pet', ['json' => array_merge(['id' => $id], $data)]);
     }
 
 
@@ -280,24 +270,6 @@ class PetService
      */
     public function deletePet($id)
     {
-        try {
-            Log::info("[API REQUEST] Deleting pet ID: {$id}");
-
-            $response = $this->client->delete("pet/{$id}");
-
-            if ($response->getStatusCode() === 200) {
-                Log::info("[API RESPONSE] Pet ID {$id} deleted successfully.");
-            } else {
-                Log::warning("[API WARNING] API responded with status code: " . $response->getStatusCode());
-            }
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
-            if ($e->getResponse()->getStatusCode() == 404) {
-                Log::warning("[API ERROR] Pet ID {$id} not found (404). Assuming it's already deleted.");
-            } else {
-                Log::error("[API ERROR] Error deleting pet ID {$id}: " . $e->getMessage());
-            }
-        } catch (\Exception $e) {
-            Log::error("[ERROR] Unexpected error deleting pet ID {$id}: " . $e->getMessage());
-        }
+        $this->requestApi('DELETE', "pet/{$id}");
     }
 }

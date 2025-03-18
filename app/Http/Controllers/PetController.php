@@ -43,6 +43,38 @@ class PetController extends Controller
             ? $this->fetchAllPets($limit, $page)
             : $this->fetchMyPets($limit, $page);
 
+        if ($filter !== 'all') {
+            $addedPets = session()->get('added_pets', []);
+
+            // Upewniamy się, że $addedPets jest tablicą
+            if (is_string($addedPets)) {
+                $addedPets = json_decode($addedPets, true);
+            }
+            if (!is_array($addedPets)) {
+                $addedPets = [];
+            }
+
+            // Pobieramy listę ID zwróconą przez API
+            $fetchedIds = array_map(fn($pet) => $pet->id ?? null, $petsPagination['data']);
+            $fetchedIds = array_filter($fetchedIds); // Usuwa null-e
+
+            // Sprawdzamy, które ID z sesji nie są w odpowiedzi API
+            $missingIds = array_diff($addedPets, $fetchedIds);
+
+            // ✅ Warunek wyświetlania ostrzeżenia TYLKO gdy są brakujące ID
+            if (!empty($missingIds)) {
+                $warningMessage = sprintf(
+                    "Warning: API returned %d pets, but %d are stored in session. Missing IDs: %s. Try again later.",
+                    count($fetchedIds),
+                    count($addedPets),
+                    implode(', ', $missingIds)
+                );
+
+                Log::warning('[API WARNING] ' . $warningMessage);
+                session()->flash('warning', $warningMessage);
+            }
+        }
+
         $filteredPets = array_filter($petsPagination['data'], function (PetDTO $pet) use ($search) {
             return empty($search) || stripos(strtolower($pet->name), $search) !== false;
         });

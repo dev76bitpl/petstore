@@ -9,14 +9,12 @@ use App\DTO\PetDTO;
 class PetService
 {
     protected $client;
-    protected $baseUrl = 'https://petstore.swagger.io/v2/
-';
 
     public function __construct()
     {
         $this->client = new Client([
-            'base_uri' => $this->baseUrl,
-            'verify' => false, // ❗ Wyłącza sprawdzanie SSL
+            'base_uri' => config('services.petstore.base_url'),
+            'verify' => false, // ❗ nadal wyłączone sprawdzanie SSL
         ]);
     }
 

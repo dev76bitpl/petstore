@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+
     <h1>List of Pets</h1>
 
     <a href="{{ route('pets.create') }}">Add New Pet</a>

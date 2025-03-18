@@ -41,6 +41,7 @@ cp .env.example .env
 Then, update the necessary environment variables in `.env`:
 
 ```
+PETSTORE_API_BASE_URL=https://petstore.swagger.io/v2/
 APP_NAME=Laravel
 APP_ENV=local
 APP_KEY=base64:your_generated_key

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
+use App\DTO\PetDTO;
 
 class PetService
 {
@@ -60,12 +61,11 @@ class PetService
      * @param int $page
      * @return array
      */
-    public function getAllPets($limit = 10, $page = 1)
+    public function getAllPets($limit = 10, $page = 1): array
     {
         $response = $this->requestApi('GET', 'pet/findByStatus', ['query' => ['status' => 'available']]);
 
         if (!is_array($response)) {
-            Log::warning("[API WARNING] Unexpected response format from API.");
             return [
                 'data' => [],
                 'total' => 0,
@@ -75,59 +75,17 @@ class PetService
             ];
         }
 
-        Log::info("[API RESPONSE] Total pets fetched: " . count($response));
-
         $totalPets = count($response);
         $offset = ($page - 1) * $limit;
         $paginatedPets = array_slice($response, $offset, $limit);
 
         return [
-            'data' => $paginatedPets,
+            'data' => PetDTO::collection($paginatedPets),
             'total' => $totalPets,
             'perPage' => $limit,
             'currentPage' => $page,
             'lastPage' => max(1, ceil($totalPets / $limit))
         ];
-        // try {
-        //     $response = $this->client->get('pet/findByStatus', [
-        //         'query' => ['status' => 'available']
-        //     ]);
-
-        //     $pets = json_decode($response->getBody()->getContents(), true);
-
-        //     Log::info("[API RESPONSE] Total pets fetched: " . count($pets));
-
-        //     if (empty($pets)) {
-        //         return [
-        //             'data' => [],
-        //             'total' => 0,
-        //             'perPage' => $limit,
-        //             'currentPage' => $page,
-        //             'lastPage' => 1
-        //         ];
-        //     }
-
-        //     $totalPets = count($pets);
-        //     $offset = ($page - 1) * $limit;
-        //     $paginatedPets = array_slice($pets, $offset, $limit);
-
-        //     return [
-        //         'data' => $paginatedPets,
-        //         'total' => $totalPets,
-        //         'perPage' => $limit,
-        //         'currentPage' => $page,
-        //         'lastPage' => max(1, ceil($totalPets / $limit))
-        //     ];
-        // } catch (\Exception $e) {
-        //     Log::error("[API ERROR] Error fetching all pets: " . $e->getMessage());
-        //     return [
-        //         'data' => [],
-        //         'total' => 0,
-        //         'perPage' => $limit,
-        //         'currentPage' => $page,
-        //         'lastPage' => 1
-        //     ];
-        // }
     }
 
     /**
@@ -193,24 +151,31 @@ class PetService
     public function getPetsByIds(array $ids, $limit = 10, $page = 1)
     {
         $pets = [];
-        if (empty($ids)) {
-            Log::warning("[WARNING] No pet IDs provided to fetch.");
-            return ['data' => [], 'total' => 0, 'perPage' => $limit, 'currentPage' => $page, 'lastPage' => 1];
-        }
+
         foreach ($ids as $id) {
             if (!is_numeric($id)) {
                 Log::warning("[WARNING] Skipping invalid pet ID: {$id}");
                 continue;
             }
-            $pet = $this->requestApi('GET', "pet/{$id}");
-            if (!empty($pet)) {
-                $pets[] = $pet;
+
+            $response = $this->requestApi('GET', "pet/{$id}");
+
+            if (!empty($response)) {
+                $pets[] = new PetDTO($response);
             }
         }
+
         $totalPets = count($pets);
         $offset = ($page - 1) * $limit;
         $paginatedPets = array_slice($pets, $offset, $limit);
-        return ['data' => $paginatedPets, 'total' => $totalPets, 'perPage' => $limit, 'currentPage' => $page, 'lastPage' => max(1, ceil($totalPets / $limit))];
+
+        return [
+            'data' => $paginatedPets,
+            'total' => $totalPets,
+            'perPage' => $limit,
+            'currentPage' => $page,
+            'lastPage' => max(1, ceil($totalPets / $limit))
+        ];
     }
 
     /**
@@ -219,9 +184,11 @@ class PetService
      * @param int $id
      * @return array|null
      */
-    public function getPetById($id)
+    public function getPetById($id): ?PetDTO
     {
-        return $this->requestApi('GET', "pet/{$id}");
+        $data = $this->requestApi('GET', "pet/{$id}");
+
+        return $data ? new PetDTO($data) : null;
     }
 
     /**
@@ -233,7 +200,7 @@ class PetService
     public function addPet($data)
     {
         $payload = [
-            'id' => rand(666, 666666),
+            'id' => rand(111111111111111111, 999999999999999999),
             'category' => [
                 'id' => $data['category_id'] ?? rand(1, 10),
                 'name' => $data['category_name'] ?? 'General'

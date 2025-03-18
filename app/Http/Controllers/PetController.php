@@ -7,6 +7,8 @@ use App\Services\PetService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
+use App\DTO\PetDTO;
+
 /**
  * Class PetController
  * @package App\Http\Controllers
@@ -41,8 +43,8 @@ class PetController extends Controller
             ? $this->fetchAllPets($limit, $page)
             : $this->fetchMyPets($limit, $page);
 
-        $filteredPets = array_filter($petsPagination['data'], function ($pet) use ($search) {
-            return empty($search) || stripos(strtolower($pet['name']), $search) !== false;
+        $filteredPets = array_filter($petsPagination['data'], function (PetDTO $pet) use ($search) {
+            return empty($search) || stripos(strtolower($pet->name), $search) !== false;
         });
 
         return view('pets.index', [
@@ -50,7 +52,7 @@ class PetController extends Controller
             'total' => count($filteredPets),
             'perPage' => $limit,
             'currentPage' => $page,
-            'lastPage' => max(1, ceil($petsPagination['total'] / $limit)),
+            'lastPage' => $petsPagination['lastPage'],
             'search' => $search,
             'filter' => $filter
         ]);
@@ -120,19 +122,14 @@ class PetController extends Controller
      */
     public function edit($id)
     {
-        try {
-            $pet = $this->petService->getPetById($id);
+        $pet = $this->petService->getPetById($id);
 
-            if (!$pet || empty($pet['id'])) {
-                Log::warning("[WARNING] Pet with ID {$id} not found in API.");
-                return redirect()->route('pets.index')->withErrors("Pet with ID {$id} not found.");
-            }
-
-            return view('pets.edit', compact('pet'));
-        } catch (\Exception $e) {
-            Log::error("[ERROR] Failed to fetch pet with ID {$id}: " . $e->getMessage());
-            return redirect()->route('pets.index')->withErrors("Error fetching pet.");
+        if (!$pet) {
+            Log::warning("[WARNING] Pet with ID {$id} not found.");
+            return redirect()->route('pets.index')->withErrors("Pet not found.");
         }
+
+        return view('pets.edit', compact('pet'));
     }
 
     /**

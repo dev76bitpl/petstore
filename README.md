@@ -64,6 +64,15 @@ Your application should now be running at `http://127.0.0.1:8000/`.
 
 ---
 
+### 5️⃣ **Optional: Clear Laravel cache and start server**
+
+```bash
+php artisan cache:clear
+php artisan config:clear
+php artisan view:clear
+php artisan serve
+```
+
 ## 📚 API Integration
 
 This application communicates with the **Swagger PetStore API** to manage pets. The main API endpoints used are:

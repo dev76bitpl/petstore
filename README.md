@@ -118,7 +118,19 @@ Click the "Delete" button next to a pet to remove it.
 
 -   If an API request fails, a flash message will be displayed.
 -   Laravel's logging system (`storage/logs/laravel.log`) records errors for debugging.
-
+-   Ensure Laravel's log's section is set correctly in `.env`:
+    ```
+    LOG_CHANNEL=daily
+    LOG_MAX_FILES=30
+    LOG_LEVEL=debug
+    LOG_FORMAT=line
+    LOG_RESPONSE=true
+    LOG_REQUEST=true
+    LOG_QUERY=true
+    LOG_QUERY_THRESHOLD=0
+    LOG_STACK=single
+    LOG_DEPRECATIONS_CHANNEL=null
+    ```
 ---
 
 ## 🔧 Troubleshooting
@@ -139,16 +151,6 @@ Make sure SQLite or MySQL is installed and enabled in `php.ini`.
 -   Ensure Laravel's session driver is set correctly in `.env`:
     ```
     SESSION_DRIVER=file
-    LOG_CHANNEL=daily
-    LOG_MAX_FILES=30
-    LOG_LEVEL=debug
-    LOG_FORMAT=line
-    LOG_RESPONSE=true
-    LOG_REQUEST=true
-    LOG_QUERY=true
-    LOG_QUERY_THRESHOLD=0
-    LOG_STACK=single
-    LOG_DEPRECATIONS_CHANNEL=null
     ```
 
 ---
